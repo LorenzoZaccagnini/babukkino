@@ -3,7 +3,7 @@ package dec
 import (
 	"encoding/hex"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"os"
 	"strings"
@@ -20,7 +20,7 @@ func DecryptFile(path string, name string, key []byte) error {
 	// -----------------------------
 
 	// leggere il file cifrato
-	noExtName := strings.Split(name, ".")[0]
+	noExtName := strings.TrimSuffix(name, ".kino")
 	f, err := os.Open(path)
 	if err != nil {
 		log.Fatal(err)
@@ -30,7 +30,7 @@ func DecryptFile(path string, name string, key []byte) error {
 	defer f.Close()
 
 	// 2 decifrarlo con la chiave simmetrica
-	ciphertext, err := ioutil.ReadAll(f)
+	ciphertext, err := io.ReadAll(f)
 	if err != nil {
 		return err
 	}
@@ -55,7 +55,7 @@ func DecryptFile(path string, name string, key []byte) error {
 		return err
 	}
 
-	// salvare il file decifrato con il nome originale + .txt
+	// salvare il file decifrato con il nome originale
 	// crea la cartella decifrati se non esiste
 
 	if _, err := os.Stat("./decifrati"); os.IsNotExist(err) {
@@ -63,7 +63,7 @@ func DecryptFile(path string, name string, key []byte) error {
 	}
 
 	// Crea il file decifrato
-	fdec, err := os.OpenFile("./decifrati/"+noExtName+".txt", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	fdec, err := os.OpenFile("./decifrati/"+noExtName, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		return err
 	}

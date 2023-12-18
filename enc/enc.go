@@ -4,7 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"os"
 
@@ -26,7 +26,7 @@ func EncryptFile(path string, name string, key []byte) error {
 	}
 
 	fmt.Println(f, "encrypt	file")
-	plainText, err := ioutil.ReadAll(f)
+	plainText, err := io.ReadAll(f)
 	if err != nil {
 		return err
 	}
@@ -59,7 +59,7 @@ func EncryptFile(path string, name string, key []byte) error {
 
 	// Write the encrypted data to a new file with "_encrypted" suffix added to the original filename
 	encryptedFilePath := "./cifrati/" + name + ".kino"
-	if err := ioutil.WriteFile(encryptedFilePath, encryptedData, 0644); err != nil {
+	if err := os.WriteFile(encryptedFilePath, encryptedData, 0644); err != nil {
 		return err
 	}
 
